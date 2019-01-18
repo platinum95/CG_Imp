@@ -1,3 +1,4 @@
 [submodule "CG_Engine"]
 	path = CG_Engine
 	url = http://github.com/platinum95/CG_Engine
+	branch = unix
