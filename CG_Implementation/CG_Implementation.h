@@ -1,16 +1,17 @@
 #pragma once
 
-#include "CG_Engine.h"
-#include "Shader.h"
-#include "Camera.h"
-#include "InputHandler.h"
-#include "Renderer.h"
-#include "Cubemap.h"
-#include "ParticleSystem.h"
-#include "Time.h"
-#include "PostProcessing.h"
-#include "ModelLoader.h"
-#include "Terrain.h"
+#include <CG_Engine/CG_Engine.h>
+#include <CG_Engine/Shader.h>
+#include <CG_Engine/Camera.h>
+#include <CG_Engine/InputHandler.h>
+#include <CG_Engine/Renderer.h>
+#include <CG_Engine/Cubemap.h>
+#include <CG_Engine/ParticleSystem.h>
+#include <CG_Engine/CgTime.h>
+#include <CG_Engine/PostProcessing.h>
+#include <CG_Engine/ModelLoader.h>
+#include <CG_Engine/Terrain.h>
+#include <filesystem>
 
 static GL_Engine::Properties::GLFWproperties windowProperties = {
 	1280,			//Width
@@ -35,7 +36,7 @@ class CG_Implementation
 public:
 	CG_Implementation();
 	~CG_Implementation();
-	void Cleanup();
+	void cleanup();
 	int run();
 
 private:
@@ -54,9 +55,9 @@ private:
 	Camera camera;
 
 	//The project's UBOs (lighting and camera) shared by most shaders
-	std::unique_ptr<CG_Data::UBO> CameraUBO;
-	std::unique_ptr<CG_Data::UBO> LightUBO;
-	CameraUBO_Data CameraUBOData;
+	std::shared_ptr<CG_Data::UBO> CameraUBO;
+	std::shared_ptr<CG_Data::UBO> LightUBO;
+	CameraUboData CameraUBOData;
 	LightUBO_Data LightUBOData;
 
 	//Shaders and renderers used in the program
@@ -92,34 +93,35 @@ private:
 	
 	//Variable used to keep the curent time (in seconds) from render-loop start
 	float time{ 0 };
+    
 	
 	/*String constants*/
-	std::string AssetBase = "./assets/";	//This is the base folder of all program assets
-	std::string ModelBase = AssetBase + "models/";	//This is the base folder of all models
-	std::string barrel_base = ModelBase + "barrel/";
-	std::string barrel_model = "barrel.obj";
-	std::string barrel_diff_name = barrel_base + "textures/barrel.png";
-	std::string barrel_normal_name = barrel_base + "textures/barrelNormal.png";
-	std::string kitchen_base = "assets/models/kitchen/";
-	std::string kitchen_model = "kitchen.obj";
-	std::string nanosuit_base = ModelBase + "nanosuit/";
-	std::string nanosuit_model = "nanosuit.obj";
-	std::string sun_base = ModelBase + "sun/";
-	std::string sun_model = "sun.obj";
-	std::string waterDUDV_loc = ModelBase + "water/waterDUDV.png";
-	std::string GrassLoc = ModelBase + "textures/grass.png";
-	std::string dragon_base = "assets/models/dragon/";
-	std::string dragon_model = "dragon_blender2.dae";
+	std::filesystem::path AssetBase = "./assets/";	//This is the base folder of all program assets
+	std::filesystem::path ModelBase = AssetBase / "models/";	//This is the base folder of all models
+	std::filesystem::path barrelBase = ModelBase / "barrel/";
+	std::filesystem::path barrelModelPath = barrelBase / "barrel.obj";
+	std::filesystem::path barrel_diff_name = barrelBase / "textures/barrel.png";
+	std::filesystem::path barrel_normal_name = barrelBase / "textures/barrelNormal.png";
+	std::filesystem::path kitchen_base = "assets/models/kitchen/";
+	std::filesystem::path kitchenModelPath = kitchen_base / "kitchen.obj";
+	std::filesystem::path nanosuit_base = ModelBase / "nanosuit/";
+	std::filesystem::path nanosuitModelPath = nanosuit_base / "nanosuit.obj";
+	std::filesystem::path sun_base = ModelBase / "sun/";
+	std::filesystem::path sunModelPath = sun_base / "sun.obj";
+	std::filesystem::path waterDUDV_loc = ModelBase / "water/waterDUDV.png";
+	std::filesystem::path GrassLoc = ModelBase / "textures/grass.png";
+	std::filesystem::path dragon_base = "assets/models/dragon/";
+	std::filesystem::path dragonModelPath = dragon_base / "dragon_blender2.dae";
 
-	std::string basicVLoc = "v.glsl", basicFLoc = "f.glsl";
-	std::string sunVLoc = "sunV.glsl", sunFLoc = "sunF.glsl";
-	std::string skyboxVLoc = "skyboxV.glsl", skyboxFLoc = "skyboxF.glsl";
-	std::string groundVLoc = "groundV.glsl", groundFLoc = "groundF.glsl";
-	std::string waterVLoc = "waterV.glsl", waterFLoc = "waterF.glsl";
-	std::string guiVLoc = "guiV.glsl", guiFLoc = "guiF.glsl";
-	std::string kitchenVLoc = "kitchenV.glsl", kitchenFLoc = "kitchenF.glsl";
-	std::string nanosuitVShader = "nanosuitV.glsl", nanosuitFShader = "nanosuitF.glsl";
-	std::string RiggedDragonVShader = "RiggedDragonV.glsl", RiggedDragonFShader = "RiggedDragonF.glsl";
+	std::filesystem::path basicVLoc = "v.glsl", basicFLoc = "f.glsl";
+	std::filesystem::path sunVLoc = "sunV.glsl", sunFLoc = "sunF.glsl";
+	std::filesystem::path skyboxVLoc = "skyboxV.glsl", skyboxFLoc = "skyboxF.glsl";
+	std::filesystem::path groundVLoc = "groundV.glsl", groundFLoc = "groundF.glsl";
+	std::filesystem::path waterVLoc = "waterV.glsl", waterFLoc = "waterF.glsl";
+	std::filesystem::path guiVLoc = "guiV.glsl", guiFLoc = "guiF.glsl";
+	std::filesystem::path kitchenVLoc = "kitchenV.glsl", kitchenFLoc = "kitchenF.glsl";
+	std::filesystem::path nanosuitVShader = "nanosuitV.glsl", nanosuitFShader = "nanosuitF.glsl";
+	std::filesystem::path RiggedDragonVShader = "RiggedDragonV.glsl", RiggedDragonFShader = "RiggedDragonF.glsl";
 	std::vector<std::string> SkyboxTexLoc{ "./assets/skybox/right.png", "./assets/skybox/left.png", "./assets/skybox/top.jpg",
 		"./assets/skybox/bottom.png", "./assets/skybox/back.png", "./assets/skybox/front.png" };
 

@@ -47,18 +47,18 @@ void CameraKeyEvent(GLuint Key, void* Parameter) {
 	auto amount = speed * time_diff_sec;
 	float dX = Key == GLFW_KEY_A ? -amount : Key == GLFW_KEY_D ? amount : 0;
 	float dY = Key == GLFW_KEY_LEFT_SHIFT ? amount : Key == GLFW_KEY_LEFT_CONTROL ? -amount : 0;
-	float dZ = Key == GLFW_KEY_W ? -amount : Key == GLFW_KEY_S ? amount : 0;
-	camera->TranslateCamera(glm::vec4(dX, dY, dZ, 1.0));
+	float dZ = Key == GLFW_KEY_W ? amount : Key == GLFW_KEY_S ? -amount : 0;
+	camera->translateCamera(glm::vec4(dX, dY, dZ, 1.0));
 
 	amount *= 4;
 	float yaw = Key == GLFW_KEY_Q ? amount : Key == GLFW_KEY_E ? -amount : 0;
-	camera->YawBy(yaw);
+	camera->yawBy(yaw);
 
 	//if (Key == GLFW_KEY_Q)
 	//	camera->ReflectCamera();
 
 	float pitch = Key == GLFW_KEY_Z ? amount : Key == GLFW_KEY_X ? -amount : 0;
-	camera->PitchBy(pitch);
+	camera->pitchBy(pitch);
 }
 
 void CubeKeyEvent(GLuint Key, void* Parameter) {
@@ -113,7 +113,7 @@ int CG_Implementation::run(){
 		double second_diff = time_diff / 1.0e6;
 		double fps = 1.0 / second_diff;
 		char title[50];
-		sprintf_s(title, "FPS: %f", fps);
+		snprintf(title, 50, "FPS: %f", fps);
 		glfwSetWindowTitle(windowProperties.window, title);
 		
 		//Lap the camera stopwatch for the camera key callback
@@ -144,32 +144,32 @@ int CG_Implementation::run(){
 		glPolygonMode(GL_FRONT_AND_BACK, wireframe ? GL_LINE : GL_FILL);
 		//Water reflection render pass
 		glEnable(GL_CLIP_DISTANCE0);
-		CameraUBOData.ClippingPlane[3] = 0;
-		CameraUBOData.ClippingPlane[1] = 1;
-		camera.ReflectCamera();
+		CameraUBOData.clippingPlane[3] = 0;
+		CameraUBOData.clippingPlane[1] = 1;
+		camera.reflectCamera();
 		UpdateCameraUBO();
 		water.Deactivate();
-		WaterFBO->Bind(0);
+		WaterFBO->bind(0);
 		renderer->Render();
 
 		//Water refraction render pass
-		CameraUBOData.ClippingPlane[1] = -1;
-		camera.ReflectCamera();
+		CameraUBOData.clippingPlane[1] = -1;
+		camera.reflectCamera();
 		UpdateCameraUBO();
 		water.Deactivate();
-		WaterFBO->Bind(1);
+		WaterFBO->bind(1);
 		renderer->Render();
-		WaterFBO->Unbind();
+		WaterFBO->unbind();
 
 		//Main render pass to post processing FBO
 		const GLenum CAttachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
-		ppFBO->Bind(2, CAttachments);
+		ppFBO->bind(2, CAttachments);
 
 		glDisable(GL_CLIP_DISTANCE0);
-		CameraUBOData.ClippingPlane[3] = 1000;
+		CameraUBOData.clippingPlane[3] = 1000;
 		water.Activate();
 		renderer->Render();
-		ppFBO->Unbind();
+		ppFBO->unbind();
 
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		//Process the FBO
@@ -190,12 +190,12 @@ int CG_Implementation::run(){
 }
 
 void CG_Implementation::UpdateCameraUBO() {
-	memcpy(CameraUBOData.ViewMatrix, glm::value_ptr(camera.GetViewMatrix()), sizeof(float) * 16);
-	memcpy(CameraUBOData.ProjectionMatrix, glm::value_ptr(camera.GetProjectionMatrix()), sizeof(float) * 16);
-	glm::mat4 PV = camera.GetProjectionMatrix() * camera.GetViewMatrix();
-	memcpy(CameraUBOData.PV_Matrix, glm::value_ptr(PV), sizeof(float) * 16);
-	memcpy(CameraUBOData.CameraOrientation, glm::value_ptr(glm::vec4(camera.GetForwardVector(), 0.0)), sizeof(float) * 4);
-	memcpy(CameraUBOData.CameraPosition, glm::value_ptr(camera.GetCameraPosition()), sizeof(float) * 4);
+	memcpy(CameraUBOData.viewMatrix, glm::value_ptr(camera.getViewMatrix()), sizeof(float) * 16);
+	memcpy(CameraUBOData.projectionMatrix, glm::value_ptr(camera.getProjectionMatrix()), sizeof(float) * 16);
+	glm::mat4 PV = camera.getProjectionMatrix() * camera.getViewMatrix();
+	memcpy(CameraUBOData.pvMatrix, glm::value_ptr(PV), sizeof(float) * 16);
+	memcpy(CameraUBOData.cameraOrientation, glm::value_ptr(glm::vec4(camera.getForwardVector(), 0.0)), sizeof(float) * 4);
+	memcpy(CameraUBOData.cameraPosition, glm::value_ptr(camera.getCameraPosition()), sizeof(float) * 4);
 	
 	LightUBOData.LightBrightness = 1;
 	sun.SetPosition(glm::vec3(LightUBOData.LightPosition[0], LightUBOData.LightPosition[1], LightUBOData.LightPosition[2]));
@@ -214,17 +214,17 @@ void CG_Implementation::initialise(){
 	}
 
 	//Initialise camera
-	camera.SetCameraPosition(glm::vec4(0, 10, -3, 1.0));		//Set initial camera position
-	camera.SetProjectionMatrix(0.01f, 10000.0f, 75.0f, 
+	camera.setCameraPosition(glm::vec4(0, 10, -3, 1.0));		//Set initial camera position
+	camera.setProjectionMatrix(0.01f, 10000.0f, 75.0f, 
 		(float)windowProperties.width / (float)windowProperties.height);	//Set the Projection Matrix
 
 	//Set the light's initial position
 	memcpy(LightUBOData.LightPosition, glm::value_ptr(glm::vec4(0, 20, -20, 1.0)), sizeof(float) * 4);
 	//Set the clipping plane for the water
-	CameraUBOData.ClippingPlane[0] = 0;
-	CameraUBOData.ClippingPlane[1] = 1;
-	CameraUBOData.ClippingPlane[2] = 0;
-	CameraUBOData.ClippingPlane[3] = 0;
+	CameraUBOData.clippingPlane[0] = 0;
+	CameraUBOData.clippingPlane[1] = 1;
+	CameraUBOData.clippingPlane[2] = 0;
+	CameraUBOData.clippingPlane[3] = 0;
 
 	SetupShaders();
 	LoadModels();
@@ -238,8 +238,8 @@ void CG_Implementation::initialise(){
 }
 
 void CG_Implementation::SetupShaders() {
-	CameraUBO = std::make_unique<CG_Data::UBO>((void*)&CameraUBOData, sizeof(CameraUBOData));
-	LightUBO = std::make_unique<CG_Data::UBO>((void*)&LightUBOData, sizeof(LightUBOData));
+	CameraUBO = std::make_shared<CG_Data::UBO>((void*)&CameraUBOData, sizeof(CameraUBOData));
+	LightUBO = std::make_shared<CG_Data::UBO>((void*)&LightUBOData, sizeof(LightUBOData));
 	memcpy(LightUBOData.LightColour, glm::value_ptr(glm::vec3(1, 1, 1)), sizeof(float) * 3);
 
 	renderer = std::make_unique<Renderer>();
@@ -248,110 +248,110 @@ void CG_Implementation::SetupShaders() {
 	renderer->AddUBO(CameraUBO.get());
 	renderer->AddUBO(LightUBO.get());
 
-	basicShader.RegisterShaderStageFromFile(basicVLoc.c_str(), GL_VERTEX_SHADER);
-	basicShader.RegisterShaderStageFromFile(basicFLoc.c_str(), GL_FRAGMENT_SHADER);
-	basicShader.RegisterAttribute("vPosition", 0);
-	basicShader.RegisterAttribute("vNormal", 2);
-	basicShader.RegisterAttribute("TexCoord", 1);
-	basicShader.RegisterAttribute("vTangeant", 3);
-	basicShader.RegisterAttribute("vBitangeant", 4);
-	basicShader.RegisterTextureUnit("diffuseTexture", 0);
-	basicShader.RegisterTextureUnit("normalTexture", 1);
-	basicShader.RegisterUBO(std::string("CameraProjectionData"), CameraUBO.get());
-	basicShader.RegisterUBO(std::string("LightData"), LightUBO.get());
-	basicShader.RegisterUniform("model");
-	basicShader.CompileShader();
+	basicShader.registerShaderStageFromFile(basicVLoc.c_str(), GL_VERTEX_SHADER);
+	basicShader.registerShaderStageFromFile(basicFLoc.c_str(), GL_FRAGMENT_SHADER);
+	basicShader.registerAttribute("vPosition", 0);
+	basicShader.registerAttribute("vNormal", 2);
+	basicShader.registerAttribute("TexCoord", 1);
+	basicShader.registerAttribute("vTangeant", 3);
+	basicShader.registerAttribute("vBitangeant", 4);
+	basicShader.registerTextureUnit("diffuseTexture", 0);
+	basicShader.registerTextureUnit("normalTexture", 1);
+	basicShader.registerUBO(std::string("CameraProjectionData"), CameraUBO );
+	basicShader.registerUBO(std::string("LightData"), LightUBO );
+	basicShader.registerUniform("model");
+	basicShader.compileShader();
 
-	groundShader.RegisterShaderStageFromFile(groundVLoc.c_str(), GL_VERTEX_SHADER);
-	groundShader.RegisterShaderStageFromFile(groundFLoc.c_str(), GL_FRAGMENT_SHADER);
-	groundShader.RegisterAttribute("MeshXZ", 0);
-	groundShader.RegisterAttribute("Height", 1);
-	groundShader.RegisterAttribute("TexCoords", 2);
-	groundShader.RegisterAttribute("Normals", 3);
-	groundShader.RegisterTextureUnit("GrassTexture", 0);
-	groundShader.RegisterUBO(std::string("CameraProjectionData"), CameraUBO.get());
-	groundShader.RegisterUBO(std::string("LightData"), LightUBO.get());
-	groundShader.RegisterUniform("GroundTranslation");
-	groundShader.CompileShader();
+	groundShader.registerShaderStageFromFile(groundVLoc.c_str(), GL_VERTEX_SHADER);
+	groundShader.registerShaderStageFromFile(groundFLoc.c_str(), GL_FRAGMENT_SHADER);
+	groundShader.registerAttribute("MeshXZ", 0);
+	groundShader.registerAttribute("Height", 1);
+	groundShader.registerAttribute("TexCoords", 2);
+	groundShader.registerAttribute("Normals", 3);
+	groundShader.registerTextureUnit("GrassTexture", 0);
+	groundShader.registerUBO(std::string("CameraProjectionData"), CameraUBO );
+	groundShader.registerUBO(std::string("LightData"), LightUBO );
+	groundShader.registerUniform("GroundTranslation");
+	groundShader.compileShader();
 
-	waterShader.RegisterShaderStageFromFile(waterVLoc.c_str(), GL_VERTEX_SHADER);
-	waterShader.RegisterShaderStageFromFile(waterFLoc.c_str(), GL_FRAGMENT_SHADER);
-	waterShader.RegisterAttribute("vPosition", 0);
-	waterShader.RegisterTextureUnit("reflectionTexture", 0);
-	waterShader.RegisterTextureUnit("refractionTexture", 1);
-	waterShader.RegisterTextureUnit("dudvMap", 2);
-	waterShader.RegisterUBO(std::string("CameraProjectionData"), CameraUBO.get());
-	waterShader.RegisterUniform("Time");
-	waterShader.CompileShader();
+	waterShader.registerShaderStageFromFile(waterVLoc.c_str(), GL_VERTEX_SHADER);
+	waterShader.registerShaderStageFromFile(waterFLoc.c_str(), GL_FRAGMENT_SHADER);
+	waterShader.registerAttribute("vPosition", 0);
+	waterShader.registerTextureUnit("reflectionTexture", 0);
+	waterShader.registerTextureUnit("refractionTexture", 1);
+	waterShader.registerTextureUnit("dudvMap", 2);
+	waterShader.registerUBO(std::string("CameraProjectionData"), CameraUBO);
+	waterShader.registerUniform("Time");
+	waterShader.compileShader();
 
-	nanosuitShader.RegisterShaderStageFromFile(nanosuitVShader.c_str(), GL_VERTEX_SHADER);
-	nanosuitShader.RegisterShaderStageFromFile(nanosuitFShader.c_str(), GL_FRAGMENT_SHADER);
-	nanosuitShader.RegisterAttribute("vPosition", 0);
-	nanosuitShader.RegisterAttribute("vNormal", 2);
-	nanosuitShader.RegisterAttribute("TexCoord", 1);
-	nanosuitShader.RegisterAttribute("vTangeant", 3);
-	nanosuitShader.RegisterAttribute("vBitangeant", 4);
-	nanosuitShader.RegisterTextureUnit("diffuseTexture", 0);
-	nanosuitShader.RegisterTextureUnit("normalTexture", 1);
-	nanosuitShader.RegisterTextureUnit("specularTexture", 2);
-	nanosuitShader.RegisterUBO(std::string("CameraProjectionData"), CameraUBO.get());
-	nanosuitShader.RegisterUBO(std::string("LightData"), LightUBO.get());
-	nanosuitShader.RegisterUniform("model");
-	nanosuitShader.CompileShader();
+	nanosuitShader.registerShaderStageFromFile(nanosuitVShader.c_str(), GL_VERTEX_SHADER);
+	nanosuitShader.registerShaderStageFromFile(nanosuitFShader.c_str(), GL_FRAGMENT_SHADER);
+	nanosuitShader.registerAttribute("vPosition", 0);
+	nanosuitShader.registerAttribute("vNormal", 2);
+	nanosuitShader.registerAttribute("TexCoord", 1);
+	nanosuitShader.registerAttribute("vTangeant", 3);
+	nanosuitShader.registerAttribute("vBitangeant", 4);
+	nanosuitShader.registerTextureUnit("diffuseTexture", 0);
+	nanosuitShader.registerTextureUnit("normalTexture", 1);
+	nanosuitShader.registerTextureUnit("specularTexture", 2);
+	nanosuitShader.registerUBO(std::string("CameraProjectionData"), CameraUBO);
+	nanosuitShader.registerUBO(std::string("LightData"), LightUBO);
+	nanosuitShader.registerUniform("model");
+	nanosuitShader.compileShader();
 
-	RiggedDragonShader.RegisterShaderStageFromFile(RiggedDragonVShader.c_str(), GL_VERTEX_SHADER);
-	RiggedDragonShader.RegisterShaderStageFromFile(RiggedDragonFShader.c_str(), GL_FRAGMENT_SHADER);
-	RiggedDragonShader.RegisterAttribute("vPosition", 0);
-	RiggedDragonShader.RegisterAttribute("vNormal", 2);
-	RiggedDragonShader.RegisterAttribute("TexCoord", 1);
-	RiggedDragonShader.RegisterAttribute("vTangeant", 3);
-	RiggedDragonShader.RegisterAttribute("vBitangeant", 4);
-	RiggedDragonShader.RegisterAttribute("BoneIDs", 5);
-	RiggedDragonShader.RegisterAttribute("BoneWeights", 6);
-	RiggedDragonShader.RegisterTextureUnit("diffuseTexture", 0);
-	RiggedDragonShader.RegisterTextureUnit("normalTexture", 1);
-	RiggedDragonShader.RegisterTextureUnit("specularTexture", 2);
-	RiggedDragonShader.RegisterUBO(std::string("CameraProjectionData"), CameraUBO.get());
-	RiggedDragonShader.RegisterUBO(std::string("LightData"), LightUBO.get());
-	RiggedDragonShader.RegisterUniform("model");
-	RiggedDragonShader.RegisterUniform("BoneMatrices");
-	RiggedDragonShader.CompileShader();
+	RiggedDragonShader.registerShaderStageFromFile(RiggedDragonVShader.c_str(), GL_VERTEX_SHADER);
+	RiggedDragonShader.registerShaderStageFromFile(RiggedDragonFShader.c_str(), GL_FRAGMENT_SHADER);
+	RiggedDragonShader.registerAttribute("vPosition", 0);
+	RiggedDragonShader.registerAttribute("vNormal", 2);
+	RiggedDragonShader.registerAttribute("TexCoord", 1);
+	RiggedDragonShader.registerAttribute("vTangeant", 3);
+	RiggedDragonShader.registerAttribute("vBitangeant", 4);
+	RiggedDragonShader.registerAttribute("BoneIDs", 5);
+	RiggedDragonShader.registerAttribute("BoneWeights", 6);
+	RiggedDragonShader.registerTextureUnit("diffuseTexture", 0);
+	RiggedDragonShader.registerTextureUnit("normalTexture", 1);
+	RiggedDragonShader.registerTextureUnit("specularTexture", 2);
+	RiggedDragonShader.registerUBO(std::string("CameraProjectionData"), CameraUBO);
+	RiggedDragonShader.registerUBO(std::string("LightData"), LightUBO);
+	RiggedDragonShader.registerUniform("model");
+	RiggedDragonShader.registerUniform("BoneMatrices");
+	RiggedDragonShader.compileShader();
 
 
-	kitchenShader.RegisterShaderStageFromFile(kitchenVLoc.c_str(), GL_VERTEX_SHADER);
-	kitchenShader.RegisterShaderStageFromFile(kitchenFLoc.c_str(), GL_FRAGMENT_SHADER);
-	kitchenShader.RegisterAttribute("vPosition", 0);
-	kitchenShader.RegisterAttribute("TexCoord", 1);
-	kitchenShader.RegisterAttribute("vNormal", 2);
-	kitchenShader.RegisterTextureUnit("diffuseTexture", 0);
-	kitchenShader.RegisterUBO(std::string("CameraProjectionData"), CameraUBO.get());
-	kitchenShader.RegisterUBO(std::string("LightData"), LightUBO.get());
-	kitchenShader.RegisterUniform("model");
-	kitchenShader.CompileShader();
+	kitchenShader.registerShaderStageFromFile(kitchenVLoc.c_str(), GL_VERTEX_SHADER);
+	kitchenShader.registerShaderStageFromFile(kitchenFLoc.c_str(), GL_FRAGMENT_SHADER);
+	kitchenShader.registerAttribute("vPosition", 0);
+	kitchenShader.registerAttribute("TexCoord", 1);
+	kitchenShader.registerAttribute("vNormal", 2);
+	kitchenShader.registerTextureUnit("diffuseTexture", 0);
+	kitchenShader.registerUBO(std::string("CameraProjectionData"), CameraUBO);
+	kitchenShader.registerUBO(std::string("LightData"), LightUBO);
+	kitchenShader.registerUniform("model");
+	kitchenShader.compileShader();
 
-	sunShader.RegisterShaderStageFromFile(sunVLoc.c_str(), GL_VERTEX_SHADER);
-	sunShader.RegisterShaderStageFromFile(sunFLoc.c_str(), GL_FRAGMENT_SHADER);
-	sunShader.RegisterAttribute("vPosition", 0);
-	sunShader.RegisterUBO(std::string("CameraProjectionData"), CameraUBO.get());
-	sunShader.RegisterUniform("model");
-	sunShader.CompileShader();
+	sunShader.registerShaderStageFromFile(sunVLoc.c_str(), GL_VERTEX_SHADER);
+	sunShader.registerShaderStageFromFile(sunFLoc.c_str(), GL_FRAGMENT_SHADER);
+	sunShader.registerAttribute("vPosition", 0);
+	sunShader.registerUBO(std::string("CameraProjectionData"), CameraUBO);
+	sunShader.registerUniform("model");
+	sunShader.compileShader();
 
-	SkyboxShader.RegisterShaderStageFromFile(skyboxVLoc.c_str(), GL_VERTEX_SHADER);
-	SkyboxShader.RegisterShaderStageFromFile(skyboxFLoc.c_str(), GL_FRAGMENT_SHADER);
-	SkyboxShader.RegisterAttribute("vPosition", 1);
-	SkyboxShader.RegisterTextureUnit("BoxTexture", 0);
-	SkyboxShader.RegisterUBO(std::string("CameraProjectionData"), CameraUBO.get());
-	SkyboxShader.CompileShader();
-	int loc = glGetAttribLocation(SkyboxShader.GetShaderID(), "vPosition");
+	SkyboxShader.registerShaderStageFromFile(skyboxVLoc.c_str(), GL_VERTEX_SHADER);
+	SkyboxShader.registerShaderStageFromFile(skyboxFLoc.c_str(), GL_FRAGMENT_SHADER);
+	SkyboxShader.registerAttribute("vPosition", 1);
+	SkyboxShader.registerTextureUnit("BoxTexture", 0);
+	SkyboxShader.registerUBO(std::string("CameraProjectionData"), CameraUBO);
+	SkyboxShader.compileShader();
+	int loc = glGetAttribLocation(SkyboxShader.getShaderID(), "vPosition");
 	Skybox = std::make_unique<Cubemap>(SkyboxTexLoc, &SkyboxShader, renderer.get());
 
-	guiShader.RegisterShaderStageFromFile(guiVLoc.c_str(), GL_VERTEX_SHADER);
-	guiShader.RegisterShaderStageFromFile(guiFLoc.c_str(), GL_FRAGMENT_SHADER);
-	guiShader.RegisterAttribute("vPosition", 0);
-	guiShader.RegisterAttribute("TexCoord", 1);
-	guiShader.RegisterTextureUnit("image", 0);
-	guiShader.RegisterTextureUnit("brightness", 1);
-	guiShader.CompileShader();
+	guiShader.registerShaderStageFromFile(guiVLoc.c_str(), GL_VERTEX_SHADER);
+	guiShader.registerShaderStageFromFile(guiFLoc.c_str(), GL_FRAGMENT_SHADER);
+	guiShader.registerAttribute("vPosition", 0);
+	guiShader.registerAttribute("TexCoord", 1);
+	guiShader.registerTextureUnit("image", 0);
+	guiShader.registerTextureUnit("brightness", 1);
+	guiShader.compileShader();
 
 }
 
@@ -362,37 +362,37 @@ void CG_Implementation::SetupModels() {
 
 	const auto width = windowProperties.width, height = windowProperties.height;
 
-	auto BasicModelUniform = basicShader.GetUniform("model");
+	auto BasicModelUniform = basicShader.getUniform("model");
 	BasicModelUniform->SetUpdateCallback(MatrixLambda);
-	auto KitchenModelUniform = kitchenShader.GetUniform("model");
+	auto KitchenModelUniform = kitchenShader.getUniform("model");
 	KitchenModelUniform->SetUpdateCallback(MatrixLambda);
-	auto NanosuitModelUniform = nanosuitShader.GetUniform("model");
+	auto NanosuitModelUniform = nanosuitShader.getUniform("model");
 	NanosuitModelUniform->SetUpdateCallback(MatrixLambda);
-	auto WaterTimeUniform = waterShader.GetUniform("Time");
+	auto WaterTimeUniform = waterShader.getUniform("Time");
 	WaterTimeUniform->SetUpdateCallback(FloatLambda);
 
 	GLsizei bCount;
 	auto nodeModelIndex = barrel.AddData((void*)glm::value_ptr(barrel.TransformMatrix));
 	barrel.SetPosition(glm::vec3(0, 0, 0));
 	bCount = (GLsizei)barrelAttributes[0]->GetVertexCount();
-	RenderPass *barrelPass = renderer->AddRenderPass(&basicShader);
+	auto barrelPass = renderer->AddRenderPass(&basicShader);
 	barrelPass->SetDrawFunction([bCount]() {glDrawElements(GL_TRIANGLES, bCount, GL_UNSIGNED_INT, 0); });
 	barrelPass->BatchVao = barrelAttributes[0];
 	std::move(barrelAttributes[0]->ModelTextures.begin(), barrelAttributes[0]->ModelTextures.end(), std::back_inserter(barrelPass->Textures));
 	barrelPass->AddBatchUnit(&barrel);
-	barrelPass->AddDataLink(BasicModelUniform, nodeModelIndex);	//Link the translate uniform to the transformation matrix of the entities
+	barrelPass->AddDataLink(BasicModelUniform.get(), nodeModelIndex);	//Link the translate uniform to the transformation matrix of the entities
 	barrel.Translate(glm::vec3(3, 4, 8));
 
 	nodeModelIndex = kitchen.AddData((void*)glm::value_ptr(kitchen.TransformMatrix));
 	kitchen.SetPosition(glm::vec3(0, 0, 0));
 	for (auto &a : kitchenAttributes) {
 		GLsizei kCount = (GLsizei)a->GetVertexCount();
-		RenderPass *kitchenPass = renderer->AddRenderPass(&kitchenShader);
+		auto kitchenPass = renderer->AddRenderPass(&kitchenShader);
 		kitchenPass->SetDrawFunction([kCount]() {glDrawElements(GL_TRIANGLES, kCount, GL_UNSIGNED_INT, 0); });
 		kitchenPass->BatchVao = a;
 		std::move(a->ModelTextures.begin(), a->ModelTextures.end(), std::back_inserter(kitchenPass->Textures));
 		kitchenPass->AddBatchUnit(&kitchen);
-		kitchenPass->AddDataLink(KitchenModelUniform, nodeModelIndex);	//Link the translate uniform to the transformation matrix of the entities
+		kitchenPass->AddDataLink(KitchenModelUniform.get(), nodeModelIndex);	//Link the translate uniform to the transformation matrix of the entities
 	}
 	kitchen.ScaleBy(glm::vec3(0.3, 0.3, 0.3));
 	kitchen.Translate(glm::vec3(0, -2, 0));
@@ -401,12 +401,12 @@ void CG_Implementation::SetupModels() {
 	nanosuit.SetPosition(glm::vec3(0, 0, 0));
 	for (auto &a : nanosuitAttributes) {
 		GLsizei nCount = (GLsizei)a->GetVertexCount();
-		RenderPass *nanosuitPass = renderer->AddRenderPass(&nanosuitShader);
+		auto nanosuitPass = renderer->AddRenderPass(&nanosuitShader);
 		nanosuitPass->SetDrawFunction([nCount]() {glDrawElements(GL_TRIANGLES, nCount, GL_UNSIGNED_INT, 0); });
 		nanosuitPass->BatchVao = a;
 		std::move(a->ModelTextures.begin(), a->ModelTextures.end(), std::back_inserter(nanosuitPass->Textures));
 		nanosuitPass->AddBatchUnit(&nanosuit);
-		nanosuitPass->AddDataLink(NanosuitModelUniform, nodeModelIndex);	//Link the translate uniform to the transformation matrix of the entities
+		nanosuitPass->AddDataLink(NanosuitModelUniform.get(), nodeModelIndex);	//Link the translate uniform to the transformation matrix of the entities
 	}
 
 
@@ -419,26 +419,26 @@ void CG_Implementation::SetupModels() {
 	sun.SetPosition(glm::vec3(0, 0, 0));
 	for (auto &a : sunAttributes) {
 		GLsizei nCount = (GLsizei)a->GetVertexCount();
-		RenderPass *sunPass = renderer->AddRenderPass(&sunShader);
+		auto sunPass = renderer->AddRenderPass(&sunShader);
 		sunPass->SetDrawFunction([nCount]() {glDrawElements(GL_TRIANGLES, nCount, GL_UNSIGNED_INT, 0); });
 		sunPass->BatchVao = a;
 		std::move(a->ModelTextures.begin(), a->ModelTextures.end(), std::back_inserter(sunPass->Textures));
 		sunPass->AddBatchUnit(&sun);
-		sunPass->AddDataLink(KitchenModelUniform, nodeModelIndex);	//Link the translate uniform to the transformation matrix of the entities
+		sunPass->AddDataLink(KitchenModelUniform.get(), nodeModelIndex);	//Link the translate uniform to the transformation matrix of the entities
 	}
 
 
 
 	WaterFBO = std::make_unique<CG_Data::FBO>(CG_Engine::ViewportWidth, CG_Engine::ViewportHeight);
-	auto reflectColAttach = WaterFBO->AddAttachment(CG_Data::FBO::AttachmentType::TextureAttachment, windowProperties.width, windowProperties.height);
-	auto refractColAttach = WaterFBO->AddAttachment(CG_Data::FBO::AttachmentType::TextureAttachment, windowProperties.width, windowProperties.height);
-	WaterFBO->AddAttachment(CG_Data::FBO::AttachmentType::DepthAttachment, windowProperties.width, windowProperties.height);
+	auto reflectColAttach = WaterFBO->addAttachment(CG_Data::FBO::AttachmentType::ColourTexture, windowProperties.width, windowProperties.height);
+	auto refractColAttach = WaterFBO->addAttachment(CG_Data::FBO::AttachmentType::ColourTexture, windowProperties.width, windowProperties.height);
+	WaterFBO->addAttachment(CG_Data::FBO::AttachmentType::DepthTexture, windowProperties.width, windowProperties.height);
 	auto reflectionTexture = std::static_pointer_cast<CG_Data::FBO::TexturebufferObject>(reflectColAttach)->GetTexture();
 	auto refractionTexture = std::static_pointer_cast<CG_Data::FBO::TexturebufferObject>(refractColAttach)->GetTexture();
 	reflectionTexture->SetUnit(GL_TEXTURE0);
 	refractionTexture->SetUnit(GL_TEXTURE1);
 
-	waterDUDVTexture = ModelLoader::LoadTexture(waterDUDV_loc, GL_TEXTURE2);
+	waterDUDVTexture = ModelLoader::loadTexture(waterDUDV_loc, GL_TEXTURE2);
 	waterVAO = std::make_shared<CG_Data::VAO>();
 	waterVAO->BindVAO();
 	auto vertexVBO = std::make_unique<CG_Data::VBO>(&waterPlaneVert[0], 12 * sizeof(float), GL_STATIC_DRAW);
@@ -455,10 +455,10 @@ void CG_Implementation::SetupModels() {
 	waterRenderPass->Textures.push_back(refractionTexture);
 	waterRenderPass->Textures.push_back(waterDUDVTexture);
 	waterRenderPass->BatchVao = waterVAO;
-	waterRenderPass->AddDataLink(WaterTimeUniform, waterTimeIndex);
+	waterRenderPass->AddDataLink(WaterTimeUniform.get(), waterTimeIndex);
 	waterRenderPass->AddBatchUnit(&water);
 
-	GrassTexture = ModelLoader::LoadTexture(GrassLoc, GL_TEXTURE0);
+	GrassTexture = ModelLoader::loadTexture(GrassLoc, GL_TEXTURE0);
 
 	terrain = std::make_unique<Terrain>(256, 256);
 	terrain->GenerateChunk(0, 0);
@@ -480,15 +480,15 @@ void CG_Implementation::SetupModels() {
 	pStats.ColourRange[1] = glm::vec3(1.0f, 0.6498f, 0.37);
 
 	particleSystem = std::make_unique<ParticleSystem>();
-	auto pRenderer = particleSystem->GenerateParticleSystem(pStats, CameraUBO.get());
+	auto pRenderer = particleSystem->GenerateParticleSystem(pStats, CameraUBO);
 	particleSystem->SetData(0, static_cast<void*>(glm::value_ptr(particleTransform)));
 	renderer->AddRenderPass(std::move(pRenderer));
 	particleSystem->PitchBy(-90.0f);
 
 	ppFBO = std::make_unique<CG_Data::FBO>(CG_Engine::ViewportWidth, CG_Engine::ViewportHeight);
-	auto FragColAttach = ppFBO->AddAttachment(CG_Data::FBO::AttachmentType::TextureAttachment, windowProperties.width, windowProperties.height);
-	auto BrightColAttach = ppFBO->AddAttachment(CG_Data::FBO::AttachmentType::TextureAttachment, windowProperties.width, windowProperties.height);
-	ppFBO->AddAttachment(CG_Data::FBO::AttachmentType::DepthAttachment, windowProperties.width, windowProperties.height);
+	auto FragColAttach = ppFBO->addAttachment(CG_Data::FBO::AttachmentType::ColourTexture, windowProperties.width, windowProperties.height);
+	auto BrightColAttach = ppFBO->addAttachment(CG_Data::FBO::AttachmentType::ColourTexture, windowProperties.width, windowProperties.height);
+	ppFBO->addAttachment(CG_Data::FBO::AttachmentType::DepthTexture, windowProperties.width, windowProperties.height);
 	auto FragTexture = std::static_pointer_cast<CG_Data::FBO::TexturebufferObject>(FragColAttach)->GetTexture();
 	auto BrightTexture = std::static_pointer_cast<CG_Data::FBO::TexturebufferObject>(BrightColAttach)->GetTexture();
 	BrightTexture->SetUnit(GL_TEXTURE0);
@@ -521,19 +521,19 @@ void CG_Implementation::SetupModels() {
 
 void CG_Implementation::LoadModels() {
 
-	barrelAttributes = mLoader.LoadModel(barrel_base, barrel_model, aiProcess_CalcTangentSpace |
+	barrelAttributes = mLoader.loadModel(barrelModelPath, aiProcess_CalcTangentSpace |
 		aiProcess_Triangulate |
 		aiProcess_JoinIdenticalVertices |
 		aiProcess_SortByPType |
 		aiProcess_GenSmoothNormals);
 
-	barrelAttributes[0]->AddTexture(mLoader.LoadTexture(barrel_diff_name, GL_TEXTURE0));
-	barrelAttributes[0]->AddTexture(mLoader.LoadTexture(barrel_normal_name, GL_TEXTURE1));
+	barrelAttributes[0]->AddTexture(mLoader.loadTexture(barrel_diff_name, GL_TEXTURE0));
+	barrelAttributes[0]->AddTexture(mLoader.loadTexture(barrel_normal_name, GL_TEXTURE1));
 
 
 
 
-	kitchenAttributes = mLoader.LoadModel(kitchen_base, kitchen_model, aiProcess_CalcTangentSpace |
+	kitchenAttributes = mLoader.loadModel(kitchenModelPath, aiProcess_CalcTangentSpace |
 		aiProcess_Triangulate |
 		aiProcess_JoinIdenticalVertices |
 		aiProcess_SortByPType |
@@ -541,21 +541,21 @@ void CG_Implementation::LoadModels() {
 
 
 
-	nanosuitAttributes = mLoader.LoadModel(nanosuit_base, nanosuit_model, aiProcess_CalcTangentSpace |
+	nanosuitAttributes = mLoader.loadModel(nanosuitModelPath, aiProcess_CalcTangentSpace |
 		aiProcess_Triangulate |
 		aiProcess_JoinIdenticalVertices |
 		aiProcess_SortByPType |
 		aiProcess_GenSmoothNormals);
 
-	sunAttributes = mLoader.LoadModel(sun_base, sun_model, 	aiProcess_Triangulate |
-															aiProcess_JoinIdenticalVertices);
+	sunAttributes = mLoader.loadModel(sunModelPath, aiProcess_Triangulate |
+												aiProcess_JoinIdenticalVertices);
 
-	DragonRiggedModel = mLoader.LoadRiggedModel(dragon_base, dragon_model, aiProcess_CalcTangentSpace |
-															aiProcess_Triangulate |
-															aiProcess_JoinIdenticalVertices |
-															aiProcess_SortByPType |
-															aiProcess_GenSmoothNormals);
-		mLoader.Cleanup();
+	DragonRiggedModel = mLoader.loadRiggedModel(dragonModelPath, aiProcess_CalcTangentSpace |
+															 aiProcess_Triangulate |
+															 aiProcess_JoinIdenticalVertices |
+															 aiProcess_SortByPType |
+															 aiProcess_GenSmoothNormals);
+		mLoader.cleanup();
 
 }
 
@@ -585,20 +585,20 @@ void CG_Implementation::SetupKeyEvents() {
 
 
 //Need to clean up gl objects before terminating GLFW
-void CG_Implementation::Cleanup() {
+void CG_Implementation::cleanup() {
 	postprocessPipeline.Cleanup();
-	basicShader.Cleanup();
-	SkyboxShader.Cleanup();
-	kitchenShader.Cleanup();
-	nanosuitShader.Cleanup();
-	guiShader.Cleanup();
-	waterShader.Cleanup();
-	sunShader.Cleanup();
-	RiggedDragonShader.Cleanup();
-	groundShader.Cleanup();
+	basicShader.cleanup();
+	SkyboxShader.cleanup();
+	kitchenShader.cleanup();
+	nanosuitShader.cleanup();
+	guiShader.cleanup();
+	waterShader.cleanup();
+	sunShader.cleanup();
+	RiggedDragonShader.cleanup();
+	groundShader.cleanup();
 	guiVAO.reset();
 	waterVAO.reset();
-	mLoader.Cleanup();
+	mLoader.cleanup();
 	WaterFBO.reset();
 	ppFBO.reset();
 	renderer.reset();
@@ -620,7 +620,7 @@ void CG_Implementation::Cleanup() {
 
 //Cleanup
 CG_Implementation::~CG_Implementation(){
-	Cleanup();
+	cleanup();
 	glfwTerminate();
 }
 
